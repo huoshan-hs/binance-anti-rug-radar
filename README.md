@@ -96,10 +96,5 @@ python scripts/bsc_watchlist.py --once --json
 6. GoPlus fallback
 7. DexScreener fallback
 
-## 当前最适合参赛展示的点
-
-- Binance 原生能力组合，而不是单接口查询
-- 风控结果不是静态报告，而是可执行建议
-- 有持续监控和候选排序，像真正的 Agent
 
 仅供参考，不构成投资建议。
