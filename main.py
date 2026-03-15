@@ -26,11 +26,15 @@ BANNER = f"""
 {Fore.CYAN}{Style.BRIGHT}
 ==============================================================
  Anti-FOMO 币安风控 Agent
- OpenClaw 风格技能包 + Binance Skills Hub 数据
+ OpenClaw 风格技能包 + Binance Skills Hub 官方能力
 ==============================================================
  命令:
-   0x...                  按当前默认链执行完整风控扫描
+   0x...                  分析单个代币合约
    chain bsc|eth|base|sol 切换默认链
+   热门 bsc               查看热门代币
+   聪明钱流入 bsc         查看聪明钱流入榜
+   meme 新币 bsc          查看 Meme 新币榜
+   异动监控 bsc           查看链上异动
    square <文本>          发布到 Binance Square
    help                   查看帮助
    exit / quit            退出
@@ -40,14 +44,16 @@ BANNER = f"""
 HELP_TEXT = """
 示例
   0x55d398326f99059ff775485246999027b3197955
-  帮我分析这个 Base 代币 0x...
-  square Anti-FOMO 币安风控 Agent 演示已上线
+  帮我分析 eth 链上的 0xd44e2a841256a392d9f4c10eb7f9177eea3c4444
+  热门 bsc
+  聪明钱流入 bsc
+  meme 新币 bsc
+  异动监控 bsc
 
 说明
-  - 合约审计优先使用 Binance Skills Hub 官方审计接口。
-  - 市场数据优先使用 Binance Skills Hub 官方代币信息接口。
-  - Binance Skills 缺少明细时，持仓细节才回退到 GoPlus。
-  - 聪明钱流向在支持的链上使用 Binance Skills Hub trading-signal。
+  - 风控、热门榜和异动监控优先使用 Binance 官方 Skills。
+  - 只有官方字段缺失时，才会回退到 GoPlus 或 DexScreener。
+  - 报告默认输出中文。
 """
 
 CHAIN_ALIASES = {
@@ -69,7 +75,7 @@ if __name__ == "__main__":
     default_chain = "bsc"
 
     print(Fore.WHITE + f"  当前默认链: {Fore.CYAN}{default_chain.upper()}{Style.RESET_ALL}")
-    print(Fore.WHITE + "  请输入合约地址，或输入 'help' 查看帮助。\n")
+    print(Fore.WHITE + "  请输入命令，或输入 'help' 查看帮助。\n")
 
     while True:
         try:
@@ -98,7 +104,7 @@ if __name__ == "__main__":
             report = agent.process(command, chain=default_chain)
             print(report)
 
-            if "严重风险:" in report or "综合风险: 高风险" in report:
+            if "严重风险：" in report or "综合风险：高风险" in report:
                 speak_alert("警告，Anti FOMO 币安风控 Agent 检测到高风险。")
 
         except KeyboardInterrupt:

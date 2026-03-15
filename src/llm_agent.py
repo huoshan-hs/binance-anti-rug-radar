@@ -20,13 +20,13 @@ except ImportError:
 
 
 SYSTEM_PROMPT = """
-你是 Anti-FOMO Agent，一个币安主题的加密风控分析助手。
+你是 Anti-FOMO Agent，一个币安主题的链上风控与机会发现助手。
 
 要求：
-1. 先识别代币真实所在链，再调用对应工具。
-2. 优先使用 Binance Skills Hub 官方接口。
-3. 缺失字段才允许使用兜底数据。
-4. 最终输出中文报告，先写风险，再写建议。
+1. 优先使用 Binance Skills Hub 官方能力。
+2. 先识别真实链，再给出结论。
+3. 当用户询问热门代币、聪明钱流入、Meme 热榜、异动监控时，优先调用官方排行类技能。
+4. 最终输出中文，先结论后解释。
 5. 结尾固定写：仅供参考，不构成投资建议。
 """
 
@@ -70,7 +70,7 @@ class LLMAgent:
             {"role": "user", "content": user_input},
         ]
 
-        for _ in range(8):
+        for _ in range(10):
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -94,18 +94,26 @@ class LLMAgent:
                     }
                 )
 
-        return "Agent 在生成最终结论前已达到工具调用上限。"
+        return "Agent 在生成最终结果前已达到工具调用上限。"
 
     def _rule_process(self, user_input: str, chain: str = "bsc") -> str:
         lower = user_input.lower()
+
         if lower.startswith("square "):
             content = user_input.split(" ", 1)[1].strip()
             return self._render_square_result(execute_tool("post_to_binance_square", {"content": content}))
 
         requested_chain = self._detect_chain(lower) or chain
+
+        if self._is_hot_token_request(lower):
+            return self._handle_hot_token_request(lower, requested_chain)
+
+        if self._is_anomaly_request(lower):
+            return self._handle_anomaly_request(requested_chain)
+
         address = self._extract_address(user_input)
         if not address:
-            return "请提供类似 0x1234... 的代币合约地址，我才能执行风控检查。"
+            return "请提供代币合约地址，或直接询问热门代币/异动监控。"
 
         detected = self.chain_client.detect_token_chain(address, requested_chain=requested_chain)
         resolved_chain = detected.get("chain", requested_chain)
@@ -124,9 +132,119 @@ class LLMAgent:
         for tool_name, payload in tool_order:
             results[tool_name] = json.loads(execute_tool(tool_name, payload))
 
-        return self._build_rule_report(address, requested_chain, resolved_chain, detected, address_profile, results)
+        return self._build_risk_report(address, requested_chain, resolved_chain, detected, address_profile, results)
 
-    def _build_rule_report(
+    def _handle_hot_token_request(self, lower: str, chain: str) -> str:
+        mode = "trending"
+        title = "\u70ed\u95e8\u4ee3\u5e01"
+
+        if "smart" in lower or "\u806a\u660e\u94b1" in lower:
+            mode = "smart_money_inflow"
+            title = "\u806a\u660e\u94b1\u6d41\u5165\u699c"
+        elif "search" in lower or "\u641c\u7d22" in lower:
+            mode = "top_search"
+            title = "\u70ed\u95e8\u641c\u7d22\u699c"
+        elif "alpha" in lower or "\u963f\u5c14\u6cd5" in lower:
+            mode = "alpha"
+            title = "Alpha 榜"
+        elif "social" in lower or "\u70ed\u5ea6" in lower or "\u8206\u60c5" in lower:
+            mode = "social_hype"
+            title = "\u793e\u4ea4\u70ed\u5ea6\u699c"
+        elif "meme" in lower or "fourmeme" in lower or "\u9f99\u867e" in lower:
+            if "final" in lower or "\u5373\u5c06" in lower:
+                mode = "meme_finalizing"
+                title = "Meme \u5373\u5c06\u8fc1\u79fb\u699c"
+            elif "migrat" in lower or "\u8fc1\u79fb" in lower:
+                mode = "meme_migrated"
+                title = "Meme \u5df2\u8fc1\u79fb\u699c"
+            else:
+                mode = "meme_new"
+                title = "Meme \u65b0\u5e01\u699c"
+
+        raw = json.loads(execute_tool("discover_hot_tokens", {"chain": chain, "mode": mode, "limit": 10}))
+        if raw.get("error"):
+            return f"{title}获取失败：{raw['error']}"
+
+        lines = [
+            "=" * 64,
+            f"{title}",
+            "=" * 64,
+            f"链：{chain.upper()}",
+            f"数据源：{raw.get('source', 'unknown')}",
+            "",
+        ]
+
+        tokens = raw.get("tokens") or []
+        if not tokens:
+            lines.append("当前未返回热门代币结果。")
+            lines.append("")
+            lines.append("仅供参考，不构成投资建议。")
+            return "\n".join(lines)
+
+        for idx, token in enumerate(tokens[:10], 1):
+            symbol = token.get("symbol") or token.get("name") or "未知"
+            address = token.get("contract_address", "")
+            lines.append(f"{idx}. {symbol}")
+            if address:
+                lines.append(f"   合约：{address}")
+            if token.get("price_usd"):
+                lines.append(f"   价格：${token['price_usd']:.8f}")
+            if token.get("market_cap_usd"):
+                lines.append(f"   市值：${token['market_cap_usd']:,.2f}")
+            if token.get("liquidity_usd"):
+                lines.append(f"   流动性：${token['liquidity_usd']:,.2f}")
+            if token.get("holders"):
+                lines.append(f"   持有人数：{token['holders']}")
+            if token.get("price_change_24h") or token.get("price_change_percent"):
+                change = token.get("price_change_24h", token.get("price_change_percent", 0))
+                lines.append(f"   涨跌幅：{change}%")
+            if token.get("social_hype_score"):
+                lines.append(f"   热度分：{token['social_hype_score']}")
+            if token.get("smart_money_inflow_usd"):
+                lines.append(f"   聪明钱净流入：${token['smart_money_inflow_usd']:,.2f}")
+            lines.append("")
+
+        lines.append("仅供参考，不构成投资建议。")
+        return "\n".join(lines)
+
+    def _handle_anomaly_request(self, chain: str) -> str:
+        raw = json.loads(execute_tool("monitor_market_anomalies", {"chain": chain, "limit": 10}))
+        if raw.get("error"):
+            return f"\u5f02\u52a8\u76d1\u63a7\u83b7\u53d6\u5931\u8d25\uff1a{raw['error']}"
+
+        lines = [
+            "=" * 64,
+            "\u94fe\u4e0a\u5f02\u52a8\u76d1\u63a7",
+            "=" * 64,
+            f"\u94fe\uff1a{chain.upper()}",
+            f"\u6570\u636e\u6e90\uff1a{raw.get('source', 'unknown')}",
+            "",
+        ]
+
+        anomalies = raw.get("anomalies") or []
+        if not anomalies:
+            lines.append("\u5f53\u524d\u672a\u53d1\u73b0\u660e\u663e\u5f02\u52a8\u4ee3\u5e01\u3002")
+            lines.append("")
+            lines.append("\u4ec5\u4f9b\u53c2\u8003\uff0c\u4e0d\u6784\u6210\u6295\u8d44\u5efa\u8bae\u3002")
+            return "\n".join(lines)
+
+        for idx, item in enumerate(anomalies[:10], 1):
+            lines.append(f"{idx}. {item.get('symbol', '未知')} | {item.get('contract_address', '')}")
+            lines.append(f"   价格：${item.get('price_usd', 0):.8f}")
+            lines.append(f"   市值：${item.get('market_cap_usd', 0):,.2f}")
+            lines.append(f"   流动性：${item.get('liquidity_usd', 0):,.2f}")
+            lines.append(f"   24h 交易量：${item.get('volume_24h_usd', 0):,.2f}")
+            lines.append(f"   24h 涨跌幅：{item.get('price_change_24h', 0)}%")
+            if item.get("smart_money_inflow_usd"):
+                lines.append(f"   聪明钱净流入：${item['smart_money_inflow_usd']:,.2f}")
+            for reason in item.get("reasons", []):
+                lines.append(f"   - {reason}")
+            lines.append("")
+
+        lines.append("\u4ec5\u4f9b\u53c2\u8003\uff0c\u4e0d\u6784\u6210\u6295\u8d44\u5efa\u8bae\u3002")
+        return "\n".join(lines)
+
+    def _build_risk_report(
         self,
         address: str,
         requested_chain: str,
@@ -162,16 +280,12 @@ class LLMAgent:
         if market and not market.get("error"):
             if market.get("liquidity_usd", 0) < 10000:
                 critical.append(f"流动性过低：${market['liquidity_usd']:.2f}")
-            buy_count = market.get("count_24h_buy", 0)
-            sell_count = market.get("count_24h_sell", 0)
-            if sell_count > buy_count * 1.5 and market.get("price_change_24h", 0) < -10:
-                warnings.append("近期卖压明显强于买盘")
+            if market.get("price_change_24h", 0) >= 200 and market.get("market_cap_usd", 0) <= 100000:
+                warnings.append("低市值代币短时暴涨，需警惕拉盘或情绪驱动")
 
         if smart and not smart.get("error"):
             if smart.get("sell_signal_count", 0) > smart.get("buy_signal_count", 0):
                 warnings.append("聪明钱卖出信号多于买入信号")
-            if smart.get("active_count", 0) > 0:
-                warnings.append(f"发现 {smart['active_count']} 条活跃聪明钱信号")
 
         data_sources = []
         if not audit.get("error"):
@@ -252,7 +366,7 @@ class LLMAgent:
                 lines.append(f"- 活跃信号数：{smart.get('active_count', 0)}")
                 lines.append(f"- 买入/卖出信号：{smart.get('buy_signal_count', 0)}/{smart.get('sell_signal_count', 0)}")
 
-        lines.extend(["", "[关键结论]"])
+        lines.extend(["", "[关键发现]"])
         if critical:
             for item in critical[:6]:
                 lines.append(f"- 严重风险：{item}")
@@ -264,7 +378,7 @@ class LLMAgent:
         if address_profile.get("address_type") != "token_contract":
             lines.append("- 当前地址未被高置信度识别为标准代币合约，报告仅可作线索参考。")
 
-        lines.extend(["", "[建议动作]"])
+        lines.extend(["", "[建议行动]"])
         if risk_label == "高风险":
             lines.append("- 建议暂不入场，或先降低仓位，等高风险项解除后再评估。")
         elif risk_label == "中风险":
@@ -296,3 +410,34 @@ class LLMAgent:
             if re.search(rf"\b{re.escape(alias)}\b", lower_text):
                 return canonical
         return None
+
+    @staticmethod
+    def _is_hot_token_request(lower_text: str) -> bool:
+        keywords = [
+            "\u70ed\u95e8",
+            "\u70ed\u699c",
+            "trending",
+            "top search",
+            "alpha",
+            "social",
+            "\u8206\u60c5",
+            "meme",
+            "fourmeme",
+            "smart money inflow",
+            "\u806a\u660e\u94b1\u6d41\u5165",
+        ]
+        return any(keyword in lower_text for keyword in keywords)
+
+    @staticmethod
+    def _is_anomaly_request(lower_text: str) -> bool:
+        keywords = [
+            "\u5f02\u52a8",
+            "\u76d1\u63a7",
+            "anomaly",
+            "abnormal",
+            "alert",
+            "\u76d1\u6d4b",
+            "\u6ce2\u52a8\u5f02\u5e38",
+            "\u5f02\u52a8\u76d1\u6d4b",
+        ]
+        return any(keyword in lower_text for keyword in keywords)

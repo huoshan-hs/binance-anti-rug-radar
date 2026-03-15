@@ -23,6 +23,8 @@ MARKET_CHAIN_IDS = {
     "bsc": "56",
     "bnb": "56",
     "base": "8453",
+    "eth": "1",
+    "ethereum": "1",
     "sol": "CT_501",
     "solana": "CT_501",
 }
@@ -174,6 +176,118 @@ class BinanceSkillsClient:
             return data
         except Exception as exc:
             return {"error": f"Binance token search request failed: {exc}"}
+
+    def get_unified_token_rank(
+        self,
+        chain: str = "bsc",
+        rank_type: int = 10,
+        period: int = 50,
+        sort_by: int = 70,
+        size: int = 20,
+    ) -> Dict[str, Any]:
+        chain_id = MARKET_CHAIN_IDS.get(chain.lower())
+        if not chain_id:
+            return {"error": f"Binance market rank does not support chain '{chain}'."}
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept-Encoding": "identity",
+            "User-Agent": "binance-web3/2.0 (Skill)",
+        }
+        payload = {
+            "rankType": rank_type,
+            "chainId": chain_id,
+            "period": period,
+            "sortBy": sort_by,
+            "orderAsc": False,
+            "page": 1,
+            "size": size,
+        }
+
+        try:
+            return self._post(
+                f"{self.binance_web3_base}/bapi/defi/v1/public/wallet-direct/buw/wallet/market/token/pulse/unified/rank/list",
+                headers=headers,
+                json_body=payload,
+            )
+        except Exception as exc:
+            return {"error": f"Binance unified rank request failed: {exc}"}
+
+    def get_social_hype_rank(self, chain: str = "bsc", target_language: str = "zh", time_range: int = 1) -> Dict[str, Any]:
+        chain_id = MARKET_CHAIN_IDS.get(chain.lower())
+        if not chain_id:
+            return {"error": f"Binance social hype rank does not support chain '{chain}'."}
+
+        headers = {
+            "Accept-Encoding": "identity",
+            "User-Agent": "binance-web3/2.0 (Skill)",
+        }
+        params = {
+            "chainId": chain_id,
+            "sentiment": "All",
+            "socialLanguage": "ALL",
+            "targetLanguage": target_language,
+            "timeRange": time_range,
+        }
+
+        try:
+            return self._get(
+                f"{self.binance_web3_base}/bapi/defi/v1/public/wallet-direct/buw/wallet/market/token/pulse/social/hype/rank/leaderboard",
+                headers=headers,
+                params=params,
+            )
+        except Exception as exc:
+            return {"error": f"Binance social hype rank request failed: {exc}"}
+
+    def get_smart_money_inflow_rank(self, chain: str = "bsc", period: str = "24h") -> Dict[str, Any]:
+        chain_id = SIGNAL_CHAIN_IDS.get(chain.lower())
+        if not chain_id:
+            return {"error": f"Binance smart money inflow rank does not support chain '{chain}'."}
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept-Encoding": "identity",
+            "User-Agent": "binance-web3/2.0 (Skill)",
+        }
+        payload = {
+            "chainId": chain_id,
+            "period": period,
+            "tagType": 2,
+        }
+
+        try:
+            return self._post(
+                f"{self.binance_web3_base}/bapi/defi/v1/public/wallet-direct/tracker/wallet/token/inflow/rank/query",
+                headers=headers,
+                json_body=payload,
+            )
+        except Exception as exc:
+            return {"error": f"Binance smart money inflow rank request failed: {exc}"}
+
+    def get_meme_rush_rank(self, chain: str = "bsc", rank_type: int = 10, limit: int = 20) -> Dict[str, Any]:
+        chain_id = SIGNAL_CHAIN_IDS.get(chain.lower())
+        if not chain_id:
+            return {"error": f"Binance meme rush does not support chain '{chain}'."}
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept-Encoding": "identity",
+            "User-Agent": "binance-web3/1.0 (Skill)",
+        }
+        payload = {
+            "chainId": chain_id,
+            "rankType": rank_type,
+            "limit": limit,
+        }
+
+        try:
+            return self._post(
+                f"{self.binance_web3_base}/bapi/defi/v1/public/wallet-direct/buw/wallet/market/token/pulse/rank/list",
+                headers=headers,
+                json_body=payload,
+            )
+        except Exception as exc:
+            return {"error": f"Binance meme rush request failed: {exc}"}
 
     def get_smart_money_signals(self, chain: str = "bsc", page: int = 1, page_size: int = 100) -> Dict[str, Any]:
         chain_id = SIGNAL_CHAIN_IDS.get(chain.lower())

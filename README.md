@@ -13,6 +13,8 @@ The current version supports:
 - Binance-first token audit and market lookup
 - holder concentration checks
 - smart-money signal checks on supported chains
+- hot on-chain token discovery with official Binance ranking skills
+- anomaly monitoring with official Binance ranking and signal skills
 - Chinese risk reports
 - Binance Square summary generation flow
 
@@ -74,6 +76,10 @@ Example prompts:
 帮我分析这个合约 0x55d398326f99059ff775485246999027b3197955
 帮我分析 eth 链上的 0xd44e2a841256a392d9f4c10eb7f9177eea3c4444
 检查这个币的风险 0x0188c8f400736a1d05b47d260138502f67f2c0f2
+热门 bsc
+聪明钱流入 bsc
+meme 新币 bsc
+异动监控 bsc
 square 帮我生成一段 Binance Square 风控摘要
 ```
 
@@ -88,6 +94,16 @@ The report will try to show:
 - holder structure
 - market data
 - smart-money signals
+
+The ranking / monitoring flow can return:
+
+- trending tokens
+- top search tokens
+- alpha tokens
+- social hype leaders
+- smart-money inflow leaders
+- meme-rush candidates
+- anomaly candidates
 
 ## Skill Usage
 
@@ -116,6 +132,15 @@ Suggested installation/test prompt:
 5. 必须显示：请求链、识别链、地址类型、分析置信度、数据源
 ```
 
+Suggested hot-token / anomaly tests:
+
+```text
+热门 bsc
+聪明钱流入 bsc
+meme 新币 bsc
+异动监控 bsc
+```
+
 ## Data Priority
 
 The analysis logic uses this priority:
@@ -123,8 +148,10 @@ The analysis logic uses this priority:
 1. Binance Skills Hub token audit
 2. Binance Skills Hub token metadata and dynamic market data
 3. Binance Skills Hub trading-signal
-4. GoPlus fallback
-5. DexScreener fallback
+4. Binance Skills Hub crypto-market-rank
+5. Binance Skills Hub meme-rush
+6. GoPlus fallback
+7. DexScreener fallback
 
 ## Supported Chains
 

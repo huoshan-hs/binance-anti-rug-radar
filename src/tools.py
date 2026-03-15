@@ -8,6 +8,7 @@ client = BinanceSkillsClient()
 SUPPORTED_CHAINS = ["eth", "bsc", "base", "solana"]
 MARKET_CHAINS = ["bsc", "base", "solana"]
 SIGNAL_CHAINS = ["bsc", "solana"]
+HOT_TOKEN_CHAINS = ["eth", "bsc", "base", "solana"]
 
 TOOL_SCHEMAS = [
     {
@@ -87,6 +88,41 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "discover_hot_tokens",
+            "description": "Use Binance official ranking skills to discover hot on-chain tokens, trending lists, social hype leaders, smart money inflow leaders, or meme-rush candidates.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "chain": {"type": "string", "enum": HOT_TOKEN_CHAINS, "description": "Target chain."},
+                    "mode": {
+                        "type": "string",
+                        "enum": ["trending", "top_search", "alpha", "social_hype", "smart_money_inflow", "meme_new", "meme_finalizing", "meme_migrated"],
+                        "description": "Hot token discovery mode.",
+                    },
+                    "limit": {"type": "integer", "description": "Max number of tokens to return."},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "monitor_market_anomalies",
+            "description": "Use Binance official ranking and signal skills to identify unusual market moves such as sharp price spikes, buy/sell imbalance, low-liquidity momentum, and smart-money inflow anomalies.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "chain": {"type": "string", "enum": ["bsc", "base", "solana", "eth"], "description": "Target chain."},
+                    "limit": {"type": "integer", "description": "Max number of anomaly candidates to return."},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "generate_risk_report",
             "description": "Placeholder tool that signals report synthesis after all Binance Skills data has been collected.",
             "parameters": {
@@ -154,6 +190,33 @@ def _json(data: Dict[str, Any]) -> str:
 
 def _binance_success(raw: Dict[str, Any]) -> bool:
     return raw.get("code") == "000000" and raw.get("success") is True and bool(raw.get("data"))
+
+
+def _icon(path: str) -> str:
+    return client.icon_url(path)
+
+
+def _normalize_rank_tokens(tokens: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
+    normalized = []
+    for token in tokens[:limit]:
+        normalized.append(
+            {
+                "symbol": token.get("symbol", ""),
+                "name": token.get("name", ""),
+                "contract_address": token.get("contractAddress", ""),
+                "chain_id": token.get("chainId", ""),
+                "price_usd": _as_float(token.get("price")),
+                "market_cap_usd": _as_float(token.get("marketCap")),
+                "liquidity_usd": _as_float(token.get("liquidity")),
+                "holders": int(_as_float(token.get("holders"))),
+                "top10_percent": _as_float(token.get("holdersTop10Percent")),
+                "price_change_24h": _as_float(token.get("percentChange24h")),
+                "volume_24h_usd": _as_float(token.get("volume24h")),
+                "count_24h": int(_as_float(token.get("count24h"))),
+                "icon_url": _icon(token.get("icon", "")),
+            }
+        )
+    return normalized
 
 
 def execute_tool(tool_name: str, args: Dict[str, Any]) -> str:
@@ -355,6 +418,177 @@ def execute_tool(tool_name: str, args: Dict[str, Any]) -> str:
                 "success": raw.get("code") == "000000",
                 "post_id": post_id,
                 "post_url": f"https://www.binance.com/square/post/{post_id}" if post_id else "",
+            }
+        )
+
+    if tool_name == "discover_hot_tokens":
+        chain = args.get("chain", "bsc")
+        mode = args.get("mode", "trending")
+        limit = max(1, min(int(args.get("limit", 10) or 10), 20))
+
+        if mode == "social_hype":
+            raw = client.get_social_hype_rank(chain=chain, target_language="zh", time_range=1)
+            if raw.get("error"):
+                return _json({"error": raw["error"]})
+            board = ((raw.get("data") or {}).get("leaderBoardList") or [])[:limit]
+            return _json(
+                {
+                    "source": "binance_social_hype_rank",
+                    "mode": mode,
+                    "chain": chain,
+                    "tokens": [
+                        {
+                            "symbol": ((item.get("metaInfo") or {}).get("symbol", "")),
+                            "contract_address": ((item.get("metaInfo") or {}).get("contractAddress", "")),
+                            "market_cap_usd": _as_float(((item.get("marketInfo") or {}).get("marketCap"))),
+                            "price_change_percent": _as_float(((item.get("marketInfo") or {}).get("priceChange"))),
+                            "social_hype_score": _as_float(((item.get("socialHypeInfo") or {}).get("socialHype"))),
+                            "sentiment": ((item.get("socialHypeInfo") or {}).get("sentiment", "")),
+                            "summary": ((item.get("socialHypeInfo") or {}).get("socialSummaryBriefTranslated", "")) or ((item.get("socialHypeInfo") or {}).get("socialSummaryBrief", "")),
+                            "icon_url": _icon(((item.get("metaInfo") or {}).get("logo", ""))),
+                        }
+                        for item in board
+                    ],
+                }
+            )
+
+        if mode == "smart_money_inflow":
+            raw = client.get_smart_money_inflow_rank(chain=chain, period="24h")
+            if raw.get("error"):
+                return _json({"error": raw["error"]})
+            data = (raw.get("data") or [])[:limit]
+            return _json(
+                {
+                    "source": "binance_smart_money_inflow_rank",
+                    "mode": mode,
+                    "chain": chain,
+                    "tokens": [
+                        {
+                            "symbol": item.get("tokenName", ""),
+                            "contract_address": item.get("ca", ""),
+                            "price_usd": _as_float(item.get("price")),
+                            "market_cap_usd": _as_float(item.get("marketCap")),
+                            "liquidity_usd": _as_float(item.get("liquidity")),
+                            "holders": int(_as_float(item.get("holders"))),
+                            "top10_percent": _as_float(item.get("holdersTop10Percent")),
+                            "price_change_percent": _as_float(item.get("priceChangeRate")),
+                            "smart_money_inflow_usd": _as_float(item.get("inflow")),
+                            "smart_money_traders": int(_as_float(item.get("traders"))),
+                            "icon_url": _icon(item.get("tokenIconUrl", "")),
+                        }
+                        for item in data
+                    ],
+                }
+            )
+
+        if mode in {"meme_new", "meme_finalizing", "meme_migrated"}:
+            rank_type = {"meme_new": 10, "meme_finalizing": 20, "meme_migrated": 30}[mode]
+            raw = client.get_meme_rush_rank(chain=chain, rank_type=rank_type, limit=limit)
+            if raw.get("error"):
+                return _json({"error": raw["error"]})
+            data = (raw.get("data") or [])[:limit]
+            return _json(
+                {
+                    "source": "binance_meme_rush",
+                    "mode": mode,
+                    "chain": chain,
+                    "tokens": [
+                        {
+                            "symbol": item.get("symbol", ""),
+                            "name": item.get("name", ""),
+                            "contract_address": item.get("contractAddress", ""),
+                            "price_usd": _as_float(item.get("price")),
+                            "market_cap_usd": _as_float(item.get("marketCap")),
+                            "liquidity_usd": _as_float(item.get("liquidity")),
+                            "holders": int(_as_float(item.get("holders"))),
+                            "top10_percent": _as_float(item.get("holdersTop10Percent")),
+                            "price_change_percent": _as_float(item.get("priceChange")),
+                            "volume_24h_usd": _as_float(item.get("volume")),
+                            "progress_percent": _as_float(item.get("progress")),
+                            "protocol": item.get("protocol"),
+                            "icon_url": _icon(item.get("icon", "")),
+                        }
+                        for item in data
+                    ],
+                }
+            )
+
+        rank_type = {"trending": 10, "top_search": 11, "alpha": 20}.get(mode, 10)
+        raw = client.get_unified_token_rank(chain=chain, rank_type=rank_type, period=50, sort_by=70, size=limit)
+        if raw.get("error"):
+            return _json({"error": raw["error"]})
+        tokens = ((raw.get("data") or {}).get("tokens") or [])
+        return _json(
+            {
+                "source": "binance_unified_rank",
+                "mode": mode,
+                "chain": chain,
+                "tokens": _normalize_rank_tokens(tokens, limit),
+            }
+        )
+
+    if tool_name == "monitor_market_anomalies":
+        chain = args.get("chain", "bsc")
+        limit = max(1, min(int(args.get("limit", 10) or 10), 20))
+
+        rank_raw = client.get_unified_token_rank(chain=chain, rank_type=10, period=50, sort_by=50, size=50)
+        if rank_raw.get("error"):
+            return _json({"error": rank_raw["error"]})
+
+        tokens = ((rank_raw.get("data") or {}).get("tokens") or [])
+        smart_money_raw = client.get_smart_money_inflow_rank(chain=chain, period="24h") if chain in {"bsc", "solana"} else {"data": []}
+        inflow_map = {}
+        for item in smart_money_raw.get("data") or []:
+            inflow_map[str(item.get("ca", "")).lower()] = item
+
+        anomalies = []
+        for token in tokens:
+            price_change = _as_float(token.get("percentChange24h"))
+            liquidity = _as_float(token.get("liquidity"))
+            volume = _as_float(token.get("volume24h"))
+            buys = _as_float(token.get("count24hBuy"))
+            sells = _as_float(token.get("count24hSell"))
+            unique_traders = _as_float(token.get("uniqueTrader24h"))
+            reasons = []
+
+            if price_change >= 100:
+                reasons.append(f"24h 涨幅异常高：{price_change:.2f}%")
+            if liquidity > 0 and volume / liquidity >= 5:
+                reasons.append(f"成交/流动性比偏高：{volume / liquidity:.2f}x")
+            if buys >= max(sells * 5, 50):
+                reasons.append(f"买卖笔数失衡：买 {int(buys)} / 卖 {int(sells)}")
+            if _as_float(token.get("marketCap")) <= 100000 and price_change >= 50:
+                reasons.append("低市值快速拉升")
+            if unique_traders >= 300 and price_change >= 30:
+                reasons.append(f"短期交易者活跃度异常：{int(unique_traders)}")
+
+            inflow = inflow_map.get(str(token.get("contractAddress", "")).lower())
+            if inflow and _as_float(inflow.get("inflow")) > 10000:
+                reasons.append(f"聪明钱净流入显著：${_as_float(inflow.get('inflow')):,.2f}")
+
+            if reasons:
+                anomalies.append(
+                    {
+                        "symbol": token.get("symbol", ""),
+                        "contract_address": token.get("contractAddress", ""),
+                        "price_usd": _as_float(token.get("price")),
+                        "market_cap_usd": _as_float(token.get("marketCap")),
+                        "liquidity_usd": liquidity,
+                        "volume_24h_usd": volume,
+                        "price_change_24h": price_change,
+                        "count_24h_buy": int(buys),
+                        "count_24h_sell": int(sells),
+                        "smart_money_inflow_usd": _as_float((inflow or {}).get("inflow")),
+                        "reasons": reasons,
+                    }
+                )
+
+        anomalies.sort(key=lambda item: (len(item["reasons"]), item["price_change_24h"]), reverse=True)
+        return _json(
+            {
+                "source": "binance_official_rank_and_signal",
+                "chain": chain,
+                "anomalies": anomalies[:limit],
             }
         )
 
