@@ -3,141 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>防FOMO杀猪盘 | 链上风控监控雷达</title>
+    <title>Binance 土狗防 Rug 雷达</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="bg-elements">
-        <div class="glow-orb orb-1"></div>
-        <div class="glow-orb orb-2"></div>
-        <div class="grid-overlay"></div>
-    </div>
+    <div class="backdrop"></div>
+    <main class="shell">
+        <section class="hero">
+            <p class="eyebrow">Binance Demo Theme</p>
+            <h1>土狗防 Rug 雷达</h1>
+            <p class="hero-copy">
+                把 Binance 官方技能串成一个真正像 Agent 的风控助手。
+                不只告诉你“这个币怎么样”，还会告诉你“值不值得继续看”“最大风险点是什么”“下一步该做什么”。
+            </p>
+        </section>
 
-    <main class="container">
-        <header class="glass-panel text-center fade-in">
-            <h1 class="gradient-text title-font">ANTI-FOMO RADAR</h1>
-            <p class="subtitle">实时多维度智能风控系统，斩断貔貅与Rug Pull</p>
-        </header>
-
-        <section class="search-section glass-panel slide-up">
-            <div class="input-group">
-                <select id="chainSelect" class="cyber-input">
-                    <option value="bsc" selected>BSC (BNB)</option>
+        <section class="panel controls">
+            <div class="field-row">
+                <select id="chainSelect">
+                    <option value="bsc" selected>BSC</option>
                     <option value="eth">Ethereum</option>
                     <option value="base">Base</option>
                     <option value="solana">Solana</option>
-                    <option value="arbitrum">Arbitrum</option>
                 </select>
-                <input type="text" id="addressInput" class="cyber-input address-input" placeholder="输入 0x... 代币合约地址进行极速扫描" autocomplete="off" spellcheck="false">
-                <button id="scanBtn" class="cyber-button">
-                    <span class="btn-text">SCAN</span>
-                    <span class="btn-glow"></span>
-                </button>
+                <input id="addressInput" type="text" placeholder="输入 0x... 合约地址">
+                <button id="scanBtn">分析单币</button>
+                <button id="watchBtn" class="secondary">刷新观察名单</button>
+            </div>
+            <p class="helper">推荐演示：先分析单币，再点击“刷新观察名单”展示每 10 分钟扫描逻辑。</p>
+        </section>
+
+        <section id="statusBox" class="panel status hidden">正在拉取 Binance 官方数据...</section>
+
+        <section id="summaryPanel" class="panel hidden">
+            <div class="summary-top">
+                <div>
+                    <p class="eyebrow">Single Token Report</p>
+                    <h2 id="tokenTitle">-</h2>
+                    <p id="tokenMeta" class="muted">-</p>
+                </div>
+                <div id="riskBadge" class="risk-badge">-</div>
+            </div>
+            <div class="summary-grid">
+                <article class="metric-card">
+                    <h3>是否值得继续看</h3>
+                    <p id="worthWatching" class="big-text">-</p>
+                </article>
+                <article class="metric-card">
+                    <h3>最大风险点</h3>
+                    <p id="maxRisk">-</p>
+                </article>
+                <article class="metric-card">
+                    <h3>下一步建议</h3>
+                    <p id="nextAction">-</p>
+                </article>
+                <article class="metric-card">
+                    <h3>分析置信度</h3>
+                    <p id="confidence">-</p>
+                </article>
             </div>
         </section>
 
-        <!-- 加载动画区 -->
-        <div id="loadingOverlay" class="loading-overlay hidden">
-            <div class="radar">
-                <div class="scanner"></div>
+        <section id="detailsPanel" class="panel hidden">
+            <div class="two-col">
+                <article>
+                    <h3>基础信息</h3>
+                    <ul id="baseFacts" class="fact-list"></ul>
+                </article>
+                <article>
+                    <h3>关键风险</h3>
+                    <ul id="riskFacts" class="fact-list"></ul>
+                </article>
             </div>
-            <p class="loading-text">正在深网拉取链上数据并分析多维风险...</p>
-        </div>
+        </section>
 
-        <!-- 结果呈现区 -->
-        <div id="resultsArea" class="results-area hidden">
-            <!-- 头部评级 -->
-            <div class="risk-banner glass-panel" id="riskBanner">
-                <div class="token-info">
-                    <h2 id="tokenName">TOKEN NAME</h2>
-                    <span class="chain-badge" id="tokenChain">BSC</span>
-                    <span class="address-badge" id="tokenAddr">0x...</span>
-                </div>
-                <div class="risk-level-box" id="riskLevelBox">
-                    <span class="pulse-dot"></span>
-                    <span id="riskLevelText" class="risk-text">SAFE</span>
-                </div>
-            </div>
-
-            <!-- 红线警告列表 -->
-            <div id="redFlagsContainer" class="red-flags-container hidden">
-                <h3 class="section-title text-red">🚨 CRITICAL RED FLAGS</h3>
-                <ul id="redFlagsList" class="flag-list"></ul>
-            </div>
-
-            <div class="data-grid">
-                <!-- 卡片 1: 合约安全 -->
-                <div class="data-card glass-panel">
-                    <div class="card-header border-cyan">
-                        <h3><span class="icon">📋</span> 合约安全审计</h3>
-                    </div>
-                    <div class="card-body" id="auditData">
-                        <div class="stat-row"><span>蜜罐检测:</span> <span id="valHoneypot">-</span></div>
-                        <div class="stat-row"><span>可增发:</span> <span id="valMintable">-</span></div>
-                        <div class="stat-row"><span>买/卖税:</span> <span id="valTaxes">-</span></div>
-                        <div class="stat-row"><span>黑名单:</span> <span id="valBlacklist">-</span></div>
-                        <div class="stat-row"><span>代理合约:</span> <span id="valProxy">-</span></div>
-                    </div>
-                </div>
-
-                <!-- 卡片 2: 持仓集中度 -->
-                <div class="data-card glass-panel">
-                    <div class="card-header border-purple">
-                        <h3><span class="icon">👥</span> 持仓集中度</h3>
-                    </div>
-                    <div class="card-body" id="holdersData">
-                        <div class="stat-row"><span>持有人数:</span> <span id="valHolders">-</span></div>
-                        <div class="stat-row"><span>Top10 占比:</span> <span id="valTop10">-</span></div>
-                        <div class="stat-row"><span>创建者持有:</span> <span id="valCreator">-</span></div>
-                        <div class="lp-section">
-                            <h4>LP 锁仓情况</h4>
-                            <ul id="lpList" class="stat-list"></ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 卡片 3: 流动性与市场 -->
-                <div class="data-card glass-panel">
-                    <div class="card-header border-blue">
-                        <h3><span class="icon">💧</span> 流动性与市场</h3>
-                    </div>
-                    <div class="card-body" id="marketData">
-                        <div class="stat-row"><span>流动性池:</span> <span id="valLiquidity" class="glow-text">-</span></div>
-                        <div class="stat-row"><span>24h 成交量:</span> <span id="valVolume">-</span></div>
-                        <div class="stat-row"><span>当前价格:</span> <span id="valPrice">-</span></div>
-                        <div class="stat-row"><span>5m 涨跌:</span> <span id="valPrice5m">-</span></div>
-                        <div class="stat-row"><span>1h 涨跌:</span> <span id="valPrice1h">-</span></div>
-                    </div>
-                </div>
-
-                <!-- 卡片 4: 聪明钱与社交动向 -->
-                <div class="data-card glass-panel">
-                    <div class="card-header border-orange">
-                        <h3><span class="icon">🧠</span> 交易行为推算</h3>
-                    </div>
-                    <div class="card-body" id="smartData">
-                        <div class="stat-row"><span>1h 买单:</span> <span id="valBuy1h">-</span></div>
-                        <div class="stat-row"><span>1h 卖单:</span> <span id="valSell1h">-</span></div>
-                        <div class="signals-section">
-                            <h4>异常信号侦测</h4>
-                            <ul id="signalsList" class="stat-list"></ul>
-                        </div>
-                    </div>
+        <section id="watchlistPanel" class="panel hidden">
+            <div class="summary-top">
+                <div>
+                    <p class="eyebrow">BSC Continuous Monitor</p>
+                    <h2>每 10 分钟扫描观察名单</h2>
+                    <p id="watchMeta" class="muted">-</p>
                 </div>
             </div>
-
-            <!-- AI 总结报告 -->
-            <div id="aiSummaryBox" class="ai-summary glass-panel hidden">
-                <div class="card-header border-green">
-                    <h3><span class="icon">🤖</span> AI 智能综合建议</h3>
-                </div>
-                <div class="card-body">
-                    <p id="aiSummaryText" class="terminal-text"></p>
-                </div>
-            </div>
-
-        </div>
+            <div id="watchlistCards" class="watchlist-grid"></div>
+        </section>
     </main>
 
     <script src="script.js"></script>

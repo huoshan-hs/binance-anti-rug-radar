@@ -25,17 +25,14 @@ def speak_alert(text: str) -> None:
 BANNER = f"""
 {Fore.CYAN}{Style.BRIGHT}
 ==============================================================
- Anti-FOMO 币安风控 Agent
- OpenClaw 风格技能包 + Binance Skills Hub 官方能力
+ Binance 土狗防 Rug 雷达
+ Binance Skills Hub 风控 + Smart Money + 持续监控 Demo
 ==============================================================
  命令:
    0x...                  分析单个代币合约
    chain bsc|eth|base|sol 切换默认链
-   热门 bsc               查看热门代币
-   聪明钱流入 bsc         查看聪明钱流入榜
-   meme 新币 bsc          查看 Meme 新币榜
-   异动监控 bsc           查看链上异动
-   square <文本>          发布到 Binance Square
+   雷达 bsc                查看 BSC 观察名单快照
+   监控 bsc                查看 BSC 观察名单快照
    help                   查看帮助
    exit / quit            退出
 {Style.RESET_ALL}
@@ -45,15 +42,16 @@ HELP_TEXT = """
 示例
   0x55d398326f99059ff775485246999027b3197955
   帮我分析 eth 链上的 0xd44e2a841256a392d9f4c10eb7f9177eea3c4444
-  热门 bsc
-  聪明钱流入 bsc
-  meme 新币 bsc
-  异动监控 bsc
+  雷达 bsc
+  监控 bsc
 
 说明
-  - 风控、热门榜和异动监控优先使用 Binance 官方 Skills。
-  - 只有官方字段缺失时，才会回退到 GoPlus 或 DexScreener。
-  - 报告默认输出中文。
+  - 单币分析会优先使用 Binance 官方审计、市场和 smart money 数据。
+  - 输出重点不是“字段罗列”，而是：
+    1. 是否值得继续看
+    2. 最大风险点
+    3. 下一步建议
+  - “雷达 bsc” 会生成 BSC 新 meme 观察名单快照。
 """
 
 CHAIN_ALIASES = {
@@ -69,7 +67,7 @@ CHAIN_ALIASES = {
 
 if __name__ == "__main__":
     print(BANNER)
-    print(Fore.WHITE + "  正在初始化 Agent...\n")
+    print(Fore.WHITE + "  正在初始化雷达引擎...\n")
 
     agent = LLMAgent()
     default_chain = "bsc"
@@ -79,13 +77,13 @@ if __name__ == "__main__":
 
     while True:
         try:
-            command = input(Fore.GREEN + "agent > " + Style.RESET_ALL).strip()
+            command = input(Fore.GREEN + "radar > " + Style.RESET_ALL).strip()
             if not command:
                 continue
 
             lower = command.lower()
             if lower in {"exit", "quit"}:
-                print(Fore.MAGENTA + "\n正在退出 Anti-FOMO 币安风控 Agent。\n")
+                print(Fore.MAGENTA + "\n正在退出 Binance 土狗防 Rug 雷达。\n")
                 break
 
             if lower == "help":
@@ -104,11 +102,11 @@ if __name__ == "__main__":
             report = agent.process(command, chain=default_chain)
             print(report)
 
-            if "严重风险：" in report or "综合风险：高风险" in report:
-                speak_alert("警告，Anti FOMO 币安风控 Agent 检测到高风险。")
+            if "综合风险: 高风险" in report:
+                speak_alert("警告，Binance 土狗防 Rug 雷达检测到高风险代币。")
 
         except KeyboardInterrupt:
-            print(Fore.MAGENTA + "\n正在退出 Anti-FOMO 币安风控 Agent。\n")
+            print(Fore.MAGENTA + "\n正在退出 Binance 土狗防 Rug 雷达。\n")
             break
         except Exception as exc:
             print(Fore.RED + f"  发生错误: {exc}")

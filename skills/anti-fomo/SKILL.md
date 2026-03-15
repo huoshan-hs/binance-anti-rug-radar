@@ -1,123 +1,122 @@
 ---
 name: anti-fomo
-description: Binance-themed token intelligence and risk screening skill for OpenClaw-style agents. Use when the user wants to analyze a Binance or Web3 token contract, auto-detect the real chain, discover hot on-chain tokens, monitor unusual market moves, review smart-money activity, or generate a Chinese risk summary using Binance official skills first.
+description: Binance-themed anti-rug radar skill for token risk screening, smart-money assisted decision support, and continuous BSC meme monitoring. Use when the user wants to analyze a token contract, auto-detect the real chain, rank risk and opportunity, decide whether a token is worth watching, generate next-step actions, or scan BSC meme candidates on a recurring basis with Binance official data first.
 ---
 
 # Anti-FOMO
 
-Run a strict Binance-native workflow. Output Chinese. Prefer Binance official skills. Do not guess.
+输出中文。优先使用 Binance 官方能力。不要猜测。
 
-## Supported tasks
+## 参赛主题
 
-1. Single-token risk analysis
-2. Real-chain auto-detection
-3. Hot token discovery
-4. Smart-money inflow discovery
-5. Meme Rush discovery
-6. Market anomaly monitoring
-7. Binance Square risk-summary generation
+把这个 skill 当成一个“Binance 土狗防 Rug 雷达”，而不只是普通代币分析器。
 
-## Official Binance skills to use
+输出要像一个 Agent：
 
-Use these official skills first:
+- 先给结论
+- 再给证据
+- 最后给动作建议
+
+## 官方能力优先级
+
+优先调用这些 Binance 官方 skills：
 
 1. `query-token-audit`
 2. `query-token-info`
 3. `trading-signal`
 4. `crypto-market-rank`
 5. `meme-rush`
-6. `square-post` when the user wants to publish
+6. `square-post`
 
-Only use fallback data after the official skill path cannot provide the required field.
+只有官方字段缺失时，才允许回退到公开数据源。
 
-## Required workflow for token analysis
+## 单币分析必做流程
 
-1. Extract the contract address.
-2. Detect the real chain before writing any conclusion.
-3. If the user-specified chain differs from the detected chain, switch to the detected chain and rerun all checks consistently.
-4. Query Binance official audit and market data first.
-5. Query smart-money signals if the chain supports them.
-6. Write a concise Chinese report.
+1. 抽取合约地址。
+2. 先识别真实链。
+3. 如果用户指定链与识别链不同，以识别链为准并重跑全部分析。
+4. 先查 Binance 官方审计和市场数据。
+5. 如果链支持，再查 smart money 信号。
+6. 输出精简中文报告。
 
-## Required workflow for hot tokens
+## 单币分析必显字段
 
-If the user asks for hot tokens, use official Binance ranking skills:
+- 请求链
+- 识别链
+- 地址类型
+- 地址判断
+- 分析置信度
+- 数据源
+- 是否值得继续看
+- 最大风险点
+- 下一步建议
 
-- Trending / Top Search / Alpha: use `crypto-market-rank`
-- Social hype: use `crypto-market-rank`
-- Smart money inflow rank: use `crypto-market-rank`
-- Meme new / finalizing / migrated: use `meme-rush`
+## 热门 / 观察名单流程
 
-Always show:
+如果用户想看热门代币、BSC 新 meme、观察名单、持续监控：
+
+1. 用 Binance 官方 ranking / meme-rush 拉候选。
+2. 对候选逐个做基础风控筛选。
+3. 过滤掉高税、低流动性、高集中度、疑似 honeypot。
+4. 按综合分排序，只返回最值得继续看的前几个。
+
+## 观察名单输出要求
+
+至少显示：
 
 - 链
 - 数据源
 - 合约地址
-- 价格
-- 市值
 - 流动性
 - 持有人数
-- 关键热度或资金流指标
+- Top10 集中度
+- 税率
+- 推荐原因
 
-## Required workflow for anomaly monitoring
+## 风控结论规则
 
-If the user asks for 异动, 监控, abnormal move, anomaly, or alerts:
+不要只输出“低风险 / 中风险 / 高风险”。
 
-1. Use `crypto-market-rank` to pull official ranked market data.
-2. Use `trading-signal` or smart-money inflow rank when supported.
-3. Look for:
-   - extreme short-term price spikes
-   - buy/sell imbalance
-   - high volume relative to liquidity
-   - low-cap rapid moves
-   - strong smart-money inflow
-4. Return a short ranked anomaly list in Chinese.
+必须额外回答：
 
-Do not claim a field is missing until both official and fallback checks fail.
+- 这个币值不值得继续看
+- 当前最大风险点是什么
+- 下一步该做什么
 
-## Hard rules for missing data
+推荐使用这三类表达：
 
-- Do not say "audit missing" if Binance audit returns `hasResult: true` and `isSupported: true`.
-- Do not say "holders missing" on `bsc`, `base`, or `solana` if Binance market data returns `holders`.
-- Do not say "liquidity missing" if Binance market data returns `liquidity`.
-- If an official field exists, use it instead of a fallback value.
-- Never silently convert missing fields into zero.
+- `值得继续看`
+- `只适合观察`
+- `不值得继续看`
 
-## Address classification
+## 缺失数据规则
 
-Always show:
+- 如果 Binance audit 返回 `hasResult: true` 且 `isSupported: true`，不要说“审计缺失”。
+- 如果 Binance market 返回 `holders`，不要说“持有人数据缺失”。
+- 如果 Binance market 返回 `liquidity`，不要说“流动性缺失”。
+- 不要把缺失字段默默写成 0。
 
-- `请求链`
-- `识别链`
-- `地址类型`
-- `地址判断`
-- `分析置信度`
-- `数据源`
-
-If the address is not confidently identified as a token contract, warn that the report is only a clue-level reference.
-
-## Supported chains
+## 支持链
 
 - Audit: `eth`, `bsc`, `base`, `solana`
-- Market data: `eth`, `bsc`, `base`, `solana` when officially supported by the current ranking endpoint
-- Smart-money signals: `bsc`, `solana`
+- Market: `eth`, `bsc`, `base`, `solana`
+- Smart Money: `bsc`, `solana`
 - Meme Rush: `bsc`, `solana`
 
-If a chain does not support a module, say so explicitly and continue with the supported modules.
+某个模块不支持时，要明确写出来，但继续完成剩余模块。
 
-## Example invocations
+## 推荐触发示例
 
 - `帮我分析这个合约 0x...`
-- `帮我分析 eth 链上的 0x...`
-- `热门 bsc`
-- `聪明钱流入 bsc`
-- `meme 新币 bsc`
-- `异动监控 bsc`
-- `帮我生成一段适合发 Binance Square 的中文风控摘要`
+- `先识别真实链，再告诉我值不值得继续看`
+- `雷达 bsc`
+- `监控 bsc`
+- `给我一个 BSC 新 meme 观察名单`
 
-## Style
+## 风格
 
-- Be direct.
-- Prefer verified facts over speculation.
-- Keep the result short and scannable.
-- End with: `仅供参考，不构成投资建议。`
+- 直接
+- 短句
+- 用事实说话
+- 先结论，后证据
+- 结尾固定写：`仅供参考，不构成投资建议。`

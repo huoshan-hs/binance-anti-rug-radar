@@ -1,7 +1,7 @@
 interface:
-  display_name: "Anti-FOMO Binance Risk"
-  short_description: "Detect chain, analyze token risk, discover hot tokens, and monitor anomalies."
-  default_prompt: "Use $anti-fomo to analyze a token contract or discover hot/anomalous on-chain tokens with a concise Chinese report."
+  display_name: "Binance 土狗防 Rug 雷达"
+  short_description: "识别真实链，给出风控结论、行动建议和 BSC 持续监控观察名单。"
+  default_prompt: "Use $anti-fomo to analyze a token contract, tell me whether it is worth watching, identify the largest risk, recommend the next action, or generate a BSC meme watchlist with Binance-first data."
 
 policy:
   allow_implicit_invocation: true
