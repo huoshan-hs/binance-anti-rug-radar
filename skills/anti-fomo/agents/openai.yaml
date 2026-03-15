@@ -1,0 +1,7 @@
+interface:
+  display_name: "Anti-FOMO Binance Risk"
+  short_description: "Auto-detect chain and analyze token risk with Binance-first data."
+  default_prompt: "Use $anti-fomo to analyze a token contract, auto-detect the real chain, and return a concise Chinese risk report."
+
+policy:
+  allow_implicit_invocation: true
