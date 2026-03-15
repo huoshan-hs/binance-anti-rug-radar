@@ -1,124 +1,166 @@
-# Anti-FOMO Binance Agent
+# Anti-FOMO Binance Skill
 
-Binance-themed token risk analyzer for OpenClaw-style agents.
+这是一个面向 OpenClaw / 小龙虾 的币安主题 Skill，核心目标是：
 
-This project has two deliverables:
+- 自动识别代币真实所在链
+- 分析单个代币的合约风险
+- 查看热门链上代币
+- 查看聪明钱流入榜
+- 查看 Meme 新币榜
+- 监控链上异动代币
+- 生成适合发 Binance Square 的中文摘要
 
-- a runnable local Python agent
-- a portable Skill package under `skills/anti-fomo/`
+这个 Skill 优先使用 **Binance 官方 Skills**：
 
-The current version supports:
+- `query-token-audit`
+- `query-token-info`
+- `trading-signal`
+- `crypto-market-rank`
+- `meme-rush`
+- `square-post`
 
-- automatic real-chain detection
-- Binance-first token audit and market lookup
-- holder concentration checks
-- smart-money signal checks on supported chains
-- hot on-chain token discovery with official Binance ranking skills
-- anomaly monitoring with official Binance ranking and signal skills
-- Chinese risk reports
-- Binance Square summary generation flow
+只有官方字段缺失时，才回退到其他公开数据源。
 
-## Project Structure
+## Skill 文件位置
 
-```text
-skills/anti-fomo/
-  SKILL.md
-  agents/openai.yaml
-src/
-  binance_skills_client.py
-  llm_agent.py
-  tools.py
-main.py
-```
+主要文件：
 
-## Requirements
+- `skills/anti-fomo/SKILL.md`
+- `skills/anti-fomo/agents/openai.yaml`
 
-- Python 3.10+
-- `requests`
-- `python-dotenv`
-- `openai` (optional, only for LLM mode)
-- Internet access
+如果你要把它交给 OpenClaw / 小龙虾，重点就是这两个文件。
 
-Install dependencies:
+## 这个 Skill 能做什么
 
-```bash
-pip install -r requirements.txt
-```
+### 1. 单个代币风险分析
 
-## Configuration
+适合场景：
 
-Edit `.env`:
+- 想看一个合约地址到底安不安全
+- 想确认真实链
+- 想看持仓、流动性、聪明钱信号
 
-```env
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-4o-mini
-BINANCE_SQUARE_OPENAPI_KEY=
-BINANCE_API_KEY=
-BINANCE_API_SECRET=
-```
-
-Notes:
-
-- `OPENAI_API_KEY` is optional. Without it, the project uses rule mode.
-- `BINANCE_SQUARE_OPENAPI_KEY` is optional. It is only needed for Binance Square publishing.
-
-## Local Usage
-
-Run:
-
-```bash
-python main.py
-```
-
-Example prompts:
+示例：
 
 ```text
 帮我分析这个合约 0x55d398326f99059ff775485246999027b3197955
 帮我分析 eth 链上的 0xd44e2a841256a392d9f4c10eb7f9177eea3c4444
 检查这个币的风险 0x0188c8f400736a1d05b47d260138502f67f2c0f2
+```
+
+输出重点：
+
+- 请求链
+- 识别链
+- 地址类型
+- 分析置信度
+- 数据源
+- 合约安全
+- 持仓结构
+- 市场数据
+- 聪明钱信号
+
+### 2. 热门代币发现
+
+适合场景：
+
+- 想看当前链上最热门的代币
+- 想看搜索热度高的代币
+- 想看 Alpha 方向代币
+- 想看社交热度高的代币
+
+示例：
+
+```text
 热门 bsc
+热门 base
+alpha bsc
+社交热度 bsc
+```
+
+### 3. 聪明钱流入榜
+
+适合场景：
+
+- 想看最近聪明钱重点流入哪些代币
+- 想快速发现资金正在关注的币
+
+示例：
+
+```text
 聪明钱流入 bsc
+smart money inflow solana
+```
+
+### 4. Meme 新币榜
+
+适合场景：
+
+- 想看 FourMeme / Meme Rush 的新币
+- 想看即将迁移或已迁移的 meme 币
+
+示例：
+
+```text
 meme 新币 bsc
+meme 即将迁移 bsc
+meme 已迁移 bsc
+```
+
+### 5. 异动监控
+
+适合场景：
+
+- 想看哪些币在短时间内暴涨
+- 想看买卖失衡、低市值快速拉升、异常交易量
+- 想看聪明钱流入异常的标的
+
+示例：
+
+```text
 异动监控 bsc
+异动监控 solana
+anomaly bsc
+```
+
+### 6. Binance Square 摘要
+
+适合场景：
+
+- 想把分析结果整理成一段适合发 Binance Square 的中文摘要
+
+示例：
+
+```text
+帮我生成一段适合发 Binance Square 的中文风控摘要
 square 帮我生成一段 Binance Square 风控摘要
 ```
 
-The report will try to show:
+## 如何在 OpenClaw / 小龙虾 中使用
 
-- requested chain
-- detected chain
-- address type
-- confidence
-- data sources
-- contract security
-- holder structure
-- market data
-- smart-money signals
+### 安装方法
 
-The ranking / monitoring flow can return:
+把下面这个文件发给 OpenClaw：
 
-- trending tokens
-- top search tokens
-- alpha tokens
-- social hype leaders
-- smart-money inflow leaders
-- meme-rush candidates
-- anomaly candidates
+```text
+skills/anti-fomo/SKILL.md
+```
 
-## Skill Usage
+然后对 OpenClaw 说：
 
-The OpenClaw/OpenClaw-style Skill files are here:
+```text
+帮我安装这个技能
+```
 
-- `skills/anti-fomo/SKILL.md`
-- `skills/anti-fomo/agents/openai.yaml`
+如果它支持读取元数据，也一并使用：
 
-How to use with OpenClaw:
+```text
+skills/anti-fomo/agents/openai.yaml
+```
 
-1. Give `skills/anti-fomo/SKILL.md` to OpenClaw.
-2. Ask OpenClaw to install the skill.
-3. Test with a real contract address.
+### 推荐测试话术
 
-Suggested installation/test prompt:
+#### 风控分析测试
 
 ```text
 帮我安装这个技能，然后测试下面这个地址：
@@ -132,7 +174,7 @@ Suggested installation/test prompt:
 5. 必须显示：请求链、识别链、地址类型、分析置信度、数据源
 ```
 
-Suggested hot-token / anomaly tests:
+#### 热门代币测试
 
 ```text
 热门 bsc
@@ -141,40 +183,55 @@ meme 新币 bsc
 异动监控 bsc
 ```
 
-## Data Priority
+## 本地调试方法
 
-The analysis logic uses this priority:
+如果你想本地运行这个项目：
+
+```bash
+pip install -r requirements.txt
+python main.py
+```
+
+本地可测试：
+
+```text
+热门 bsc
+聪明钱流入 bsc
+meme 新币 bsc
+异动监控 bsc
+帮我分析这个合约 0x55d398326f99059ff775485246999027b3197955
+```
+
+## 数据优先级
+
+分析时使用的优先级是：
 
 1. Binance Skills Hub token audit
-2. Binance Skills Hub token metadata and dynamic market data
+2. Binance Skills Hub token metadata / dynamic market data
 3. Binance Skills Hub trading-signal
 4. Binance Skills Hub crypto-market-rank
 5. Binance Skills Hub meme-rush
 6. GoPlus fallback
 7. DexScreener fallback
 
-## Supported Chains
+## 支持链
 
 - Audit: `eth`, `bsc`, `base`, `solana`
-- Market data: `bsc`, `base`, `solana`
-- Smart-money signals: `bsc`, `solana`
+- 热门榜/市场数据: 以 Binance 官方 ranking / market 支持链为准
+- Smart Money: `bsc`, `solana`
+- Meme Rush: `bsc`, `solana`
 
-## GitHub Push Notes
+## 适合作为参赛展示的功能点
 
-Recommended files to publish:
+如果你要拿这个 Skill 去参赛，最适合展示的是这几个点：
 
-- `skills/anti-fomo/`
-- `src/`
-- `main.py`
-- `requirements.txt`
-- `README.md`
+- 自动识别真实链
+- 单币风险分析
+- 官方热门榜
+- 官方聪明钱流入榜
+- 官方 Meme 新币榜
+- 官方异动监控
 
-Do not publish:
+## 提醒
 
-- `.env`
-- `__pycache__/`
-- local cache files
-
-## Disclaimer
-
-For reference only. Not investment advice.
+仅供参考，不构成投资建议。
